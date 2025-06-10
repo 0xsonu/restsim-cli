@@ -2,40 +2,40 @@
 
 import ora from "ora";
 import chalk from "chalk";
-import { parseYamlFile, flatten, unflatten } from "./parser.ts";
-import { promptUser } from "./ui.ts";
+import { parseYamlFile } from "./parser.ts";
 import { writeYamlFile } from "./writter.ts";
+import { promptFromSchema } from "./ui.ts";
+import { HelmValuesSchema } from "./schema.ts";
 
 async function main() {
   console.clear();
   console.log(
-    chalk.green.bold("\n🛠️ Helm Values Customizer CLI (Bun Edition)\n"),
+    chalk.green.bold("\n🛠️ Helm Values Customizer CLI (Schema-Based)\n"),
   );
 
   const spinner = ora("Loading values.yaml...").start();
   const defaultConfig = parseYamlFile("values.yaml");
-  const flat = flatten(defaultConfig);
   spinner.succeed("Loaded values.yaml");
 
-  console.log(chalk.blue("\n🔧 Customize the values below:\n"));
-  const { result, modifiedKeys } = await promptUser(flat);
-  const finalYaml = unflatten(result);
+  console.log(chalk.blue("\n🔧 Customize your Helm values below:\n"));
 
-  if (modifiedKeys.size > 0) {
-    console.log(chalk.green("\n✅ Modified keys:"));
-    [...modifiedKeys].forEach((k) =>
-      console.log(`  ${chalk.yellow("✔")} ${k}`),
+  const userInput = await promptFromSchema(defaultConfig, HelmValuesSchema);
+
+  const parsed = HelmValuesSchema.safeParse(userInput);
+  if (!parsed.success) {
+    console.error(
+      chalk.red("❌ Invalid configuration:"),
+      parsed.error.format(),
     );
-  } else {
-    console.log(chalk.gray("\nNo changes made."));
+    process.exit(1);
   }
 
-  writeYamlFile("custom-values.yaml", finalYaml);
+  writeYamlFile("custom-values.yaml", userInput);
 
-  console.log(chalk.bold(`\n📁 Output saved to custom-values.yaml\n`));
+  console.log(chalk.bold(`\n📁 Saved to custom-values.yaml\n`));
 }
 
 main().catch((err) => {
-  console.error(chalk.red("❌ Fatal Error:"), err);
+  console.error(chalk.red("❌ Unexpected Error:"), err);
   process.exit(1);
 });

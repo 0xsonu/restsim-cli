@@ -1,8 +1,8 @@
-replicaCount: 10
+replicaCount: 1
 image:
-  repository: mongodb
-  tag: lattest
+  repository: nginx
+  tag: stable
   pullPolicy: IfNotPresent
 service:
-  type: LoadBalancer
-  port: 2323
+  type: NodePort
+  port: 8080

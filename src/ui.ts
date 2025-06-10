@@ -1,33 +1,98 @@
-import { input } from "@inquirer/prompts";
+import { input, select } from "@inquirer/prompts";
 import chalk from "chalk";
+import {
+  type ZodTypeAny,
+  ZodObject,
+  ZodEnum,
+  ZodLiteral,
+  ZodUnion,
+  ZodNumber,
+  ZodBoolean,
+  ZodString,
+  ZodType,
+} from "zod";
 
-export async function promptUser(flatConfig: Record<string, any>) {
-  const result: Record<string, any> = {};
-  const modified: Set<string> = new Set();
+export async function promptFromSchema(
+  currentValue: any,
+  schema: ZodTypeAny,
+  pathPrefix = "",
+): Promise<any> {
+  if (schema instanceof ZodObject) {
+    const result: Record<string, any> = {};
+    const shape = schema.shape;
 
-  for (const key of Object.keys(flatConfig)) {
-    const defaultVal = flatConfig[key];
-    const response = await input({
-      message: `Set value for ${chalk.cyan(key)} (${chalk.gray(defaultVal)}):`,
-      default: String(defaultVal),
+    for (const key of Object.keys(shape)) {
+      const fullPath = pathPrefix ? `${pathPrefix}.${key}` : key;
+      const value = currentValue?.[key];
+      const fieldSchema = shape[key];
+
+      result[key] = await promptFromSchema(value, fieldSchema, fullPath);
+    }
+    return result;
+  }
+
+  const displayName = chalk.cyan(pathPrefix);
+  const defaultValue = currentValue;
+
+  const options = extractOptions(schema);
+  let finalValue: any;
+
+  if (options.length > 0) {
+    const selected = await select({
+      message: `Choose value for ${displayName} (${chalk.gray(defaultValue)}):`,
+      choices: [
+        ...options.map((opt) => ({ name: String(opt), value: opt })),
+        { name: "Not in list", value: "__custom__" },
+      ],
     });
 
-    const finalVal =
-      response === "" ? defaultVal : castValue(response, defaultVal);
-    if (finalVal !== defaultVal) modified.add(key);
-    result[key] = finalVal;
+    if (selected === "__custom__") {
+      const customInput = await input({
+        message: `Enter custom value for ${displayName}:`,
+        default: String(defaultValue),
+      });
+      finalValue = castValue(customInput, schema);
+    } else {
+      finalValue = selected;
+    }
+  } else {
+    const userInput = await input({
+      message: `Enter value for ${displayName} (${chalk.gray(defaultValue)}):`,
+      default: String(defaultValue),
+    });
+    finalValue = castValue(userInput, schema);
   }
 
-  return { modifiedKeys: modified, result };
+  return finalValue;
 }
 
-function castValue(input: string, original: any): any {
-  if (typeof original === "number") {
-    const num = Number(input);
-    return isNaN(num) ? input : num;
+function extractOptions(schema: ZodTypeAny): any[] {
+  if (schema instanceof ZodEnum) {
+    return schema.options;
   }
-  if (typeof original === "boolean") {
-    return input.toLowerCase() === "true";
+
+  if (schema instanceof ZodUnion) {
+    return schema._def.options
+      .filter((s: ZodTypeAny) => s instanceof ZodLiteral)
+      .map((s: ZodLiteral<any>) => s.value);
   }
-  return input;
+
+  return [];
+}
+
+function castValue(value: string, schema: ZodTypeAny): any {
+  if (schema instanceof ZodNumber) {
+    const num = Number(value);
+    return isNaN(num) ? value : num;
+  }
+
+  if (schema instanceof ZodBoolean) {
+    return value.toLowerCase() === "true";
+  }
+
+  if (schema instanceof ZodEnum || schema instanceof ZodString) {
+    return value;
+  }
+
+  return value;
 }
