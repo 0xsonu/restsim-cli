@@ -1,0 +1,8 @@
+replicaCount: 10
+image:
+  repository: mongodb
+  tag: lattest
+  pullPolicy: IfNotPresent
+service:
+  type: LoadBalancer
+  port: 2323
