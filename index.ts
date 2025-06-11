@@ -38,6 +38,7 @@ const getTerminalDimensions = () => {
 };
 
 // Create centered ASCII banner
+// Update createBanner function to include a border
 const createBanner = (text: string) => {
   const { columns } = getTerminalDimensions();
   const maxWidth = Math.min(columns - 10, 80); // Limit width
@@ -52,7 +53,17 @@ const createBanner = (text: string) => {
     .split("\n")
     .map((line) => centerAlign(line, columns));
 
-  return centeredLines.join("\n");
+  const bannerContent = centeredLines.join("\n");
+
+  // Apply a border around the banner
+  return boxen(bannerContent, {
+    padding: 1,
+    margin: { top: 1, bottom: 1, left: 0, right: 0 },
+    borderStyle: "double",
+    borderColor: "magenta",
+    width: columns - 4, // Full width with a small margin
+    textAlignment: "center",
+  });
 };
 
 // Create boxed content with margins
@@ -175,6 +186,174 @@ function shouldShowQuestion(
   }
 }
 
+// Steps for the build process simulation
+type ProcessingStep = {
+  message: string;
+  duration: [number, number]; // Min and max duration in milliseconds
+  subSteps?: ProcessingStep[];
+};
+
+// Define all processing steps
+const buildProcessSteps: ProcessingStep[] = [
+  {
+    message: "Uploading Data to Backend",
+    duration: [2000, 2500],
+  },
+  {
+    message: "Cloning Repository",
+    duration: [13000, 17000],
+  },
+  {
+    message: "Generating Values.yaml",
+    duration: [2000, 3000],
+  },
+  {
+    message: "Applying Patch Customization based on user input",
+    duration: [55000, 65000],
+  },
+  {
+    message: "Triggering Pipeline",
+    duration: [180000, 300000],
+    subSteps: [
+      {
+        message: "Starting build process",
+        duration: [10000, 15000],
+      },
+      {
+        message: "Code scanning",
+        duration: [30000, 45000],
+      },
+      {
+        message: "Security and Vulnerability Scanning",
+        duration: [60000, 90000],
+      },
+      {
+        message: "Building Chart",
+        duration: [80000, 150000],
+      },
+    ],
+  },
+  {
+    message: "Cleanup",
+    duration: [3000, 5000],
+  },
+];
+
+// Helper function to get random duration within range
+const getRandomDuration = (range: [number, number]): number => {
+  return Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+};
+
+// Function to simulate processing with steps and substeps
+const simulateProcessingSteps = async (
+  steps: ProcessingStep[]
+): Promise<void> => {
+  console.log(createBox(chalk.bold.cyan("Building Your Environment")));
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    const stepSpinner = ora({
+      text: chalk.yellow(`[${i + 1}/${steps.length}] ${step.message}...`),
+      spinner: "dots",
+    }).start();
+
+    // Wait for the main step duration
+    const duration = getRandomDuration(step.duration);
+
+    // If there are substeps, process them
+    if (step.subSteps && step.subSteps.length > 0) {
+      stepSpinner.succeed(
+        chalk.green(`[${i + 1}/${steps.length}] ${step.message}`)
+      );
+
+      // Process each substep
+      for (let j = 0; j < step.subSteps.length; j++) {
+        const substep = step.subSteps[j];
+        const subSpinner = ora({
+          text: chalk.yellow(
+            `    [${j + 1}/${step.subSteps.length}] ${substep.message}...`
+          ),
+          spinner: "dots",
+        }).start();
+
+        // Wait for the substep duration
+        await new Promise((resolve) =>
+          setTimeout(resolve, getRandomDuration(substep.duration))
+        );
+
+        subSpinner.succeed(
+          chalk.green(
+            `    [${j + 1}/${step.subSteps.length}] ${substep.message}`
+          )
+        );
+      }
+    } else {
+      // Simple step with no substeps
+      await new Promise((resolve) => setTimeout(resolve, duration));
+      stepSpinner.succeed(
+        chalk.green(`[${i + 1}/${steps.length}] ${step.message}`)
+      );
+    }
+  }
+
+  // Final success message
+  console.log(
+    boxen(chalk.bold.green("\n🎉 Chart Build Successful! 🎉"), {
+      padding: 1,
+      margin: 1,
+      borderStyle: "double",
+      borderColor: "green",
+    })
+  );
+};
+
+// Function to prompt for email and simulate sharing
+const requestEmailAndShare = async (): Promise<void> => {
+  console.log(
+    createBox(
+      chalk.yellow(
+        "Please provide your email address to receive the chart version"
+      )
+    )
+  );
+
+  const email = await input({
+    message: chalk.blue("Your email address:"),
+    validate: (input) => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(input)) {
+        return "Please enter a valid email address";
+      }
+      return true;
+    },
+  });
+
+  // Mock the sharing process
+  const sharingSpinner = ora({
+    text: chalk.yellow(`Sending chart details to ${email}...`),
+    spinner: "dots",
+  }).start();
+
+  const duration = getRandomDuration([5000, 8000]);
+  await new Promise((resolve) => setTimeout(resolve, duration));
+
+  sharingSpinner.succeed(
+    chalk.green(`Chart details successfully sent to ${email}`)
+  );
+
+  console.log(
+    createBox(
+      chalk.bold.green("Thank you for using SimBot CLI!") +
+        "\n" +
+        chalk.yellow("The application will restart in 3 seconds...")
+    )
+  );
+
+  // Wait before restarting
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+};
+
+// Modify the runQuestionnaire function to include the new build process
 async function runQuestionnaire() {
   // Display banner at the start
   console.clear(); // Clear the screen first
@@ -271,7 +450,16 @@ async function runQuestionnaire() {
 
     console.log(createBox(completionMessage));
 
-    return answers;
+    // Start the build process
+    console.log(chalk.bold.cyan("\nStarting the build process..."));
+    await simulateProcessingSteps(buildProcessSteps);
+
+    // Request email and share
+    await requestEmailAndShare();
+
+    // Restart the application
+    console.clear();
+    return runQuestionnaire();
   } catch (error) {
     initialSpinner.fail(chalk.red("Questionnaire failed"));
     console.error(
