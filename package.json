@@ -3,8 +3,12 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "start": "bun index.ts"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/decompress": "^4.2.7"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -12,6 +16,9 @@
   "dependencies": {
     "@inquirer/prompts": "^7.5.3",
     "chalk": "^5.4.1",
+    "decompress": "^4.2.1",
+    "decompress-targz": "^4.1.1",
+    "inquirer-file-selector": "^0.6.2",
     "ora": "^8.2.0",
     "yaml": "^2.8.0",
     "zod": "^3.25.57"

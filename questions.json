@@ -1,0 +1,97 @@
+{
+  "questions": [
+    {
+      "message": "What can i help with?",
+      "type": "select",
+      "choices": [
+        {
+          "name": "Site Value Generation",
+          "value": "sg"
+        },
+        {
+          "name": "New Node Introduction",
+          "value": "new_node"
+        }
+      ]
+    },
+    {
+      "message": "Site Name: ",
+      "type": "input",
+      "showIf": "answers['What can i help with'] === 'sg'"
+    },
+    {
+      "message": "Value Generation Type: ",
+      "type": "select",
+      "choices": [
+        {
+          "name": "Automatic",
+          "value": "auto"
+        },
+        {
+          "name": "Manual",
+          "value": "manual"
+        }
+      ],
+      "showIf": "answers['What can i help with'] === 'sg'"
+    },
+    {
+      "message": "Node Name: ",
+      "type": "input",
+      "showIf": "answers['What can i help with'] === 'new_node'"
+    },
+    {
+      "message": "Ask for Data Type: ",
+      "type": "select",
+      "choices": [
+        {
+          "name": "PM_STATISTICAL",
+          "value": "PM_STATISTICAL"
+        },
+        {
+          "name": "PM_STATISTICAL_1MIN",
+          "value": "PM_STATISTICAL_1MIN"
+        },
+        {
+          "name": "PM_STATISTICAL_5MIN",
+          "value": "PM_STATISTICAL_5MIN"
+        }
+      ],
+      "showIf": "answers['What can i help with'] === 'new_node'"
+    },
+    {
+      "message": "Do you need Event File?",
+      "type": "select",
+      "choices": [
+        {
+          "name": "Yes",
+          "value": "yes"
+        },
+        {
+          "name": "No",
+          "value": "no"
+        }
+      ],
+      "showIf": "answers['What can i help with'] === 'new_node'"
+    },
+    {
+      "message": "Do you need Stats File?",
+      "type": "select",
+      "choices": [
+        {
+          "name": "Yes",
+          "value": "yes"
+        },
+        {
+          "name": "No",
+          "value": "no"
+        }
+      ],
+      "showIf": "answers['What can i help with'] === 'new_node'"
+    },
+    {
+      "message": "Template File zip location (Full Path)",
+      "type": "file-selector",
+      "showIf": "answers['What can i help with'] === 'new_node'"
+    }
+  ]
+}
