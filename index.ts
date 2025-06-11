@@ -8,6 +8,10 @@ import { exec as execCallback } from "child_process";
 import decompress from "decompress";
 import decompressTargz from "decompress-targz";
 import fileSelector from "inquirer-file-selector";
+import boxen from "boxen";
+import figlet from "figlet";
+import centerAlign from "center-align";
+import terminalSize from "terminal-size";
 
 const exec = promisify(execCallback);
 
@@ -18,7 +22,7 @@ type Choice = {
 
 type Question = {
   message: string;
-  type: "input" | "select";
+  type: "input" | "select" | "file-selector";
   choices?: Choice[];
   showIf?: string;
 };
@@ -27,14 +31,43 @@ type QuestionsData = {
   questions: Question[];
 };
 
-type Choice = { name: string; value: string };
-type Question = {
-  message: string;
-  type: "input" | "select";
-  choices?: Choice[];
-  showIf?: string;
+// Get terminal dimensions
+const getTerminalDimensions = () => {
+  const { columns, rows } = terminalSize();
+  return { columns, rows };
 };
-type QuestionsData = { questions: Question[] };
+
+// Create centered ASCII banner
+const createBanner = (text: string) => {
+  const { columns } = getTerminalDimensions();
+  const maxWidth = Math.min(columns - 10, 80); // Limit width
+
+  const figletText = figlet.textSync(text, {
+    font: "Standard",
+    horizontalLayout: "default",
+    verticalLayout: "default",
+  });
+
+  const centeredLines = figletText
+    .split("\n")
+    .map((line) => centerAlign(line, columns));
+
+  return centeredLines.join("\n");
+};
+
+// Create boxed content with margins
+const createBox = (content: string) => {
+  const { columns } = getTerminalDimensions();
+  const maxWidth = Math.min(columns - 10, 100); // Limit width with margins
+
+  return boxen(content, {
+    padding: 1,
+    margin: 1,
+    borderStyle: "round",
+    borderColor: "cyan",
+    width: maxWidth,
+  });
+};
 
 const simulateProcessing = async (message: string, successMessage: string) => {
   const spinner = ora({
@@ -143,14 +176,31 @@ function shouldShowQuestion(
 }
 
 async function runQuestionnaire() {
+  // Display banner at the start
+  console.clear(); // Clear the screen first
+  const banner = createBanner("SIMBOT CLI");
+  console.log(chalk.cyan(banner));
+
+  const initialMessage =
+    chalk.bold.blue("Welcome to SIM BOT!\n") +
+    chalk.yellow(
+      "This tool will guide you through setting up your environment.\n"
+    );
+
+  console.log(createBox(initialMessage));
+
   const initialSpinner = ora(chalk.blue("Starting questionnaire...")).start();
 
   try {
     const questionsData = await loadQuestions();
-    initialSpinner.succeed(chalk.green("Questionnaire ready!"));
-    console.log(chalk.bold.green("\nPlease answer the following questions:\n"));
+    initialSpinner.succeed(chalk.green("SimBot ready!"));
+
+    console.log(
+      createBox(chalk.bold.green("Please answer the following questions:"))
+    );
 
     const answers: Record<string, string> = {};
+    let questionIndex = 0;
 
     for (const question of questionsData.questions) {
       if (!shouldShowQuestion(question, answers)) continue;
@@ -200,7 +250,7 @@ async function runQuestionnaire() {
           }
         }
       } else if (question.type === "file-selector") {
-        const selection: Item = await fileSelector({
+        const selection: any = await fileSelector({
           message: question.message,
           basePath: process.cwd(),
         });
@@ -209,11 +259,17 @@ async function runQuestionnaire() {
       }
 
       answers[question.message.trim().replace(/[:?]\s*$/, "")] = answer;
+      questionIndex++;
     }
 
-    console.log(chalk.bold("\n🎉 Questionnaire completed successfully!"));
-    console.log(chalk.bold("\nYour answers:"));
-    console.log(answers);
+    const completionMessage =
+      chalk.bold("\n🎉 Questionnaire completed successfully!\n\n") +
+      chalk.bold("Your answers:\n") +
+      Object.entries(answers)
+        .map(([key, value]) => `${chalk.cyan(key)}: ${chalk.yellow(value)}`)
+        .join("\n");
+
+    console.log(createBox(completionMessage));
 
     return answers;
   } catch (error) {
@@ -227,5 +283,6 @@ async function runQuestionnaire() {
   }
 }
 
-// Install required dependencies: npm install decompress decompress-targz @types/node
+// Install required dependencies:
+// npm install decompress decompress-targz @types/node boxen figlet center-align terminal-size
 runQuestionnaire().catch(() => process.exit(1));

@@ -8,18 +8,24 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@types/decompress": "^4.2.7"
+    "@types/center-align": "^1.0.2",
+    "@types/decompress": "^4.2.7",
+    "@types/figlet": "^1.7.0"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.5.3",
+    "boxen": "^8.0.1",
+    "center-align": "^1.0.1",
     "chalk": "^5.4.1",
     "decompress": "^4.2.1",
     "decompress-targz": "^4.1.1",
+    "figlet": "^1.8.1",
     "inquirer-file-selector": "^0.6.2",
     "ora": "^8.2.0",
+    "terminal-size": "^4.0.0",
     "yaml": "^2.8.0",
     "zod": "^3.25.57"
   }
