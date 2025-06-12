@@ -12,6 +12,9 @@ import boxen from "boxen";
 import figlet from "figlet";
 import centerAlign from "center-align";
 import terminalSize from "terminal-size";
+import readline from "readline";
+import { confirm } from "@inquirer/prompts";
+import { file } from "bun";
 
 const exec = promisify(execCallback);
 
@@ -31,17 +34,14 @@ type QuestionsData = {
   questions: Question[];
 };
 
-// Get terminal dimensions
 const getTerminalDimensions = () => {
   const { columns, rows } = terminalSize();
   return { columns, rows };
 };
 
-// Create centered ASCII banner
-// Update createBanner function to include a border
 const createBanner = (text: string) => {
   const { columns } = getTerminalDimensions();
-  const maxWidth = Math.min(columns - 10, 80); // Limit width
+  const maxWidth = Math.min(columns - 10, 80);
 
   const figletText = figlet.textSync(text, {
     font: "Standard",
@@ -55,21 +55,19 @@ const createBanner = (text: string) => {
 
   const bannerContent = centeredLines.join("\n");
 
-  // Apply a border around the banner
   return boxen(bannerContent, {
     padding: 1,
     margin: { top: 1, bottom: 1, left: 0, right: 0 },
     borderStyle: "double",
     borderColor: "magenta",
-    width: columns - 4, // Full width with a small margin
+    width: columns - 4,
     textAlignment: "center",
   });
 };
 
-// Create boxed content with margins
 const createBox = (content: string) => {
   const { columns } = getTerminalDimensions();
-  const maxWidth = Math.min(columns - 10, 100); // Limit width with margins
+  const maxWidth = Math.min(columns - 10, 100);
 
   return boxen(content, {
     padding: 1,
@@ -92,77 +90,71 @@ const simulateProcessing = async (message: string, successMessage: string) => {
   spinner.succeed(chalk.green(successMessage));
 };
 
-const validateTemplateFile = async (filePath: string) => {
+const validateTemplateFile = async (filePath: string): Promise<void> => {
+  await simulateProcessing(
+    "Checking if path exists...",
+    "Path exists validation completed"
+  );
+
+  if (!fs.existsSync(filePath)) {
+    throw new Error("The specified path does not exist");
+  }
+
+  await simulateProcessing(
+    "Verifying file existence...",
+    "File existence verified"
+  );
+
+  const stats = fs.statSync(filePath);
+  if (!stats.isFile()) {
+    throw new Error("The path does not point to a file");
+  }
+
+  await simulateProcessing(
+    "Validating file extension...",
+    "File extension validation completed"
+  );
+
+  if (path.extname(filePath).toLowerCase() !== ".zip") {
+    throw new Error("The file must be a .zip file");
+  }
+
+  const tempDir = path.join(__dirname, "temp_validation");
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir);
+  }
+
+  const extractionSpinner = ora({
+    text: chalk.yellow("Extracting and validating zip contents..."),
+    spinner: "dots",
+  }).start();
+
   try {
-    await simulateProcessing(
-      "Checking if path exists...",
-      "Path exists validation completed"
-    );
+    const files = await decompress(filePath, tempDir, {
+      plugins: [decompressTargz()],
+    });
 
-    if (!fs.existsSync(filePath)) {
-      throw new Error("The specified path does not exist");
-    }
+    extractionSpinner.succeed(chalk.green("Zip extraction completed"));
 
     await simulateProcessing(
-      "Verifying file existence...",
-      "File existence verified"
+      "Checking for required files...",
+      "Required files check completed"
     );
 
-    const stats = fs.statSync(filePath);
-    if (!stats.isFile()) {
-      throw new Error("The path does not point to a file");
-    }
-
-    await simulateProcessing(
-      "Validating file extension...",
-      "File extension validation completed"
+    const hasValidFiles = files.some(
+      (file) => file.path.endsWith(".bin.gz") || file.path.endsWith(".gpb.gz")
     );
 
-    if (path.extname(filePath).toLowerCase() !== ".zip") {
-      throw new Error("The file must be a .zip file");
-    }
-
-    const tempDir = path.join(__dirname, "temp_validation");
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir);
-    }
-
-    const extractionSpinner = ora({
-      text: chalk.yellow("Extracting and validating zip contents..."),
-      spinner: "dots",
-    }).start();
-
-    try {
-      const files = await decompress(filePath, tempDir, {
-        plugins: [decompressTargz()],
-      });
-
-      extractionSpinner.succeed(chalk.green("Zip extraction completed"));
-
-      await simulateProcessing(
-        "Checking for required files...",
-        "Required files check completed"
+    if (!hasValidFiles) {
+      throw new Error(
+        "Zip file must contain at least one .bin.gz or .gpb.gz file"
       );
-
-      const hasValidFiles = files.some(
-        (file) => file.path.endsWith(".bin.gz") || file.path.endsWith(".gpb.gz")
-      );
-
-      if (!hasValidFiles) {
-        throw new Error(
-          "Zip file must contain at least one .bin.gz or .gpb.gz file"
-        );
-      }
-
-      fs.rmSync(tempDir, { recursive: true, force: true });
-
-      return true;
-    } catch (err) {
-      extractionSpinner.fail(chalk.red("Failed to extract zip file"));
-      throw err;
     }
-  } catch (error) {
-    throw error;
+
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  } catch (err) {
+    extractionSpinner.fail(chalk.red("Failed to extract zip file"));
+    throw err;
   }
 };
 
@@ -186,14 +178,12 @@ function shouldShowQuestion(
   }
 }
 
-// Steps for the build process simulation
 type ProcessingStep = {
   message: string;
-  duration: [number, number]; // Min and max duration in milliseconds
+  duration: [number, number];
   subSteps?: ProcessingStep[];
 };
 
-// Define all processing steps
 const buildProcessSteps: ProcessingStep[] = [
   {
     message: "Uploading Data to Backend",
@@ -239,12 +229,10 @@ const buildProcessSteps: ProcessingStep[] = [
   },
 ];
 
-// Helper function to get random duration within range
 const getRandomDuration = (range: [number, number]): number => {
   return Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
 };
 
-// Function to simulate processing with steps and substeps
 const simulateProcessingSteps = async (
   steps: ProcessingStep[]
 ): Promise<void> => {
@@ -257,16 +245,13 @@ const simulateProcessingSteps = async (
       spinner: "dots",
     }).start();
 
-    // Wait for the main step duration
     const duration = getRandomDuration(step.duration);
 
-    // If there are substeps, process them
     if (step.subSteps && step.subSteps.length > 0) {
       stepSpinner.succeed(
         chalk.green(`[${i + 1}/${steps.length}] ${step.message}`)
       );
 
-      // Process each substep
       for (let j = 0; j < step.subSteps.length; j++) {
         const substep = step.subSteps[j];
         const subSpinner = ora({
@@ -276,7 +261,6 @@ const simulateProcessingSteps = async (
           spinner: "dots",
         }).start();
 
-        // Wait for the substep duration
         await new Promise((resolve) =>
           setTimeout(resolve, getRandomDuration(substep.duration))
         );
@@ -288,7 +272,6 @@ const simulateProcessingSteps = async (
         );
       }
     } else {
-      // Simple step with no substeps
       await new Promise((resolve) => setTimeout(resolve, duration));
       stepSpinner.succeed(
         chalk.green(`[${i + 1}/${steps.length}] ${step.message}`)
@@ -296,7 +279,6 @@ const simulateProcessingSteps = async (
     }
   }
 
-  // Final success message
   console.log(
     boxen(chalk.bold.green("\n🎉 Chart Build Successful! 🎉"), {
       padding: 1,
@@ -307,8 +289,43 @@ const simulateProcessingSteps = async (
   );
 };
 
-// Function to prompt for email and simulate sharing
-const requestEmailAndShare = async (): Promise<void> => {
+const setupGracefulShutdown = () => {
+  readline.emitKeypressEvents(process.stdin);
+  if (process.stdin.isTTY) process.stdin.setRawMode(true);
+
+  process.stdin.on("keypress", (str, key) => {
+    if (key.ctrl && key.name === "c") {
+      gracefulExit();
+    }
+  });
+
+  ["SIGINT", "SIGTERM", "SIGQUIT"].forEach((signal) => {
+    process.on(signal, () => {
+      gracefulExit();
+    });
+  });
+};
+
+const gracefulExit = () => {
+  console.log("\n");
+  console.log(
+    boxen(
+      chalk.bold.yellow(
+        "👋 Gracefully shutting down SimBot CLI...\nThank you for using our tool!"
+      ),
+      {
+        padding: 1,
+        margin: 1,
+        borderStyle: "round",
+        borderColor: "yellow",
+        textAlignment: "center",
+      }
+    )
+  );
+  process.exit(0);
+};
+
+const requestEmailAndShare = async (): Promise<boolean> => {
   console.log(
     createBox(
       chalk.yellow(
@@ -328,7 +345,6 @@ const requestEmailAndShare = async (): Promise<void> => {
     },
   });
 
-  // Mock the sharing process
   const sharingSpinner = ora({
     text: chalk.yellow(`Sending chart details to ${email}...`),
     spinner: "dots",
@@ -341,22 +357,19 @@ const requestEmailAndShare = async (): Promise<void> => {
     chalk.green(`Chart details successfully sent to ${email}`)
   );
 
-  console.log(
-    createBox(
-      chalk.bold.green("Thank you for using SimBot CLI!") +
-        "\n" +
-        chalk.yellow("The application will restart in 3 seconds...")
-    )
-  );
+  const continueUsing = await confirm({
+    message: chalk.blue("Would you like to continue using SimBot CLI?"),
+  });
 
-  // Wait before restarting
-  await new Promise((resolve) => setTimeout(resolve, 3000));
+  if (!continueUsing) {
+    gracefulExit();
+  }
+
+  return continueUsing;
 };
 
-// Modify the runQuestionnaire function to include the new build process
 async function runQuestionnaire() {
-  // Display banner at the start
-  console.clear(); // Clear the screen first
+  console.clear();
   const banner = createBanner("SIMBOT CLI");
   console.log(chalk.cyan(banner));
 
@@ -385,56 +398,68 @@ async function runQuestionnaire() {
       if (!shouldShowQuestion(question, answers)) continue;
 
       let answer: string = "";
+      let isValid = false;
 
-      if (question.type === "select") {
-        if (!question.choices)
-          throw new Error(
-            `Missing choices for select question: ${question.message}`
-          );
-        answer = await select({
-          message: chalk.blue(question.message),
-          choices: question.choices.map((choice) => ({
-            name: choice.name,
-            value: choice.value,
-          })),
-        });
-      } else if (question.type === "input") {
-        answer = await input({
-          message: chalk.blue(question.message),
-        });
+      while (!isValid) {
+        if (question.type === "select") {
+          if (!question.choices)
+            throw new Error(
+              `Missing choices for select question: ${question.message}`
+            );
+          answer = await select({
+            message: chalk.blue(question.message),
+            choices: question.choices.map((choice) => ({
+              name: choice.name,
+              value: choice.value,
+            })),
+          });
+          isValid = true;
+        } else if (question.type === "input") {
+          answer = await input({
+            message: chalk.blue(question.message),
+          });
+          isValid = true;
+        } else if (question.type === "file-selector") {
+          let isFileValid = false;
 
-        if (question.message.includes("Template File zip location")) {
-          const validationSpinner = ora(
-            chalk.yellow("Starting template file validation...")
-          ).start();
+          while (!isFileValid) {
+            const selection: any = await fileSelector({
+              message: question.message,
+              basePath: process.cwd(),
+            });
 
-          try {
-            await validateTemplateFile(answer);
-            validationSpinner.succeed(
-              chalk.green("Template file validation successful!")
-            );
-          } catch (error) {
-            validationSpinner.fail(
-              chalk.red(
-                `Validation failed: ${
-                  error instanceof Error ? error.message : "Unknown error"
-                }`
-              )
-            );
-            console.log(
-              chalk.yellow("\nPlease provide a valid template file path:")
-            );
-            questionIndex--; // Go back one question
-            continue;
+            if (!selection) {
+              console.log(chalk.red("No file selected, please try again."));
+              continue;
+            }
+
+            try {
+              await validateTemplateFile(selection);
+
+              console.log(chalk.green("Template file validation successful!"));
+              answer = selection;
+              isValid = true;
+              isFileValid = true;
+            } catch (error) {
+              console.log(
+                chalk.red(
+                  `Validation failed: ${
+                    error instanceof Error ? error.message : "Unknown error"
+                  }`
+                )
+              );
+
+              const retry = await confirm({
+                message: chalk.yellow("Would you like to select another file?"),
+              });
+
+              if (!retry) {
+                gracefulExit();
+              }
+              // Loop continues to show file selector again
+            }
           }
         }
-      } else if (question.type === "file-selector") {
-        const selection: any = await fileSelector({
-          message: question.message,
-          basePath: process.cwd(),
-        });
-        console.log(selection);
-        answer = selection.path;
       }
 
       answers[question.message.trim().replace(/[:?]\s*$/, "")] = answer;
@@ -450,16 +475,15 @@ async function runQuestionnaire() {
 
     console.log(createBox(completionMessage));
 
-    // Start the build process
     console.log(chalk.bold.cyan("\nStarting the build process..."));
     await simulateProcessingSteps(buildProcessSteps);
 
-    // Request email and share
-    await requestEmailAndShare();
+    const shouldContinue = await requestEmailAndShare();
 
-    // Restart the application
-    console.clear();
-    return runQuestionnaire();
+    if (shouldContinue) {
+      console.clear();
+      return runQuestionnaire();
+    }
   } catch (error) {
     initialSpinner.fail(chalk.red("Questionnaire failed"));
     console.error(
@@ -471,6 +495,8 @@ async function runQuestionnaire() {
   }
 }
 
-// Install required dependencies:
-// npm install decompress decompress-targz @types/node boxen figlet center-align terminal-size
-runQuestionnaire().catch(() => process.exit(1));
+setupGracefulShutdown();
+runQuestionnaire().catch((error) => {
+  console.error(chalk.red("\nAn error occurred:"), error.message);
+  gracefulExit();
+});
