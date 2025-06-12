@@ -130,9 +130,7 @@ const validateTemplateFile = async (filePath: string): Promise<void> => {
   }).start();
 
   try {
-    const files = await decompress(filePath, tempDir, {
-      plugins: [decompressTargz()],
-    });
+    const files = await decompress(filePath, tempDir);
 
     extractionSpinner.succeed(chalk.green("Zip extraction completed"));
 
@@ -236,7 +234,12 @@ const getRandomDuration = (range: [number, number]): number => {
 const simulateProcessingSteps = async (
   steps: ProcessingStep[]
 ): Promise<void> => {
-  console.log(createBox(chalk.bold.cyan("Building Your Environment")));
+  console.log(
+    createBox(
+      chalk.bold("\n🎉 Questionnaire Completed 🎉 !\n\n") +
+        chalk.bold.cyan("Building Your Environment")
+    )
+  );
 
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
@@ -387,9 +390,16 @@ async function runQuestionnaire() {
     const questionsData = await loadQuestions();
     initialSpinner.succeed(chalk.green("SimBot ready!"));
 
-    console.log(
-      createBox(chalk.bold.green("Please answer the following questions:"))
-    );
+    const handEmoji = "👋";
+    const message =
+      chalk.cyanBright.bold("SimBot: ") +
+      " " +
+      chalk.green(`Hi! ${handEmoji}`) +
+      " " +
+      chalk.white("I'm here to help you simulate telecom site data.") +
+      " " +
+      chalk.yellow("What would you like to do today?");
+    console.log(createBox(message));
 
     const answers: Record<string, string> = {};
     let questionIndex = 0;
@@ -473,9 +483,9 @@ async function runQuestionnaire() {
         .map(([key, value]) => `${chalk.cyan(key)}: ${chalk.yellow(value)}`)
         .join("\n");
 
-    console.log(createBox(completionMessage));
+    // console.log(createBox(completionMessage));
 
-    console.log(chalk.bold.cyan("\nStarting the build process..."));
+    // console.log(chalk.bold.cyan("\nStarting the build process..."));
     await simulateProcessingSteps(buildProcessSteps);
 
     const shouldContinue = await requestEmailAndShare();
