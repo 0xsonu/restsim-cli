@@ -93,7 +93,7 @@ const simulateProcessing = async (message: string, successMessage: string) => {
 const validateTemplateFile = async (filePath: string): Promise<void> => {
   await simulateProcessing(
     "Checking if path exists...",
-    "Path exists validation completed"
+    "Path exists validation completed",
   );
 
   if (!fs.existsSync(filePath)) {
@@ -102,7 +102,7 @@ const validateTemplateFile = async (filePath: string): Promise<void> => {
 
   await simulateProcessing(
     "Verifying file existence...",
-    "File existence verified"
+    "File existence verified",
   );
 
   const stats = fs.statSync(filePath);
@@ -112,7 +112,7 @@ const validateTemplateFile = async (filePath: string): Promise<void> => {
 
   await simulateProcessing(
     "Validating file extension...",
-    "File extension validation completed"
+    "File extension validation completed",
   );
 
   if (path.extname(filePath).toLowerCase() !== ".zip") {
@@ -136,16 +136,16 @@ const validateTemplateFile = async (filePath: string): Promise<void> => {
 
     await simulateProcessing(
       "Checking for required files...",
-      "Required files check completed"
+      "Required files check completed",
     );
 
     const hasValidFiles = files.some(
-      (file) => file.path.endsWith(".bin.gz") || file.path.endsWith(".gpb.gz")
+      (file) => file.path.endsWith(".bin.gz") || file.path.endsWith(".gpb.gz"),
     );
 
     if (!hasValidFiles) {
       throw new Error(
-        "Zip file must contain at least one .bin.gz or .gpb.gz file"
+        "Zip file must contain at least one .bin.gz or .gpb.gz file",
       );
     }
 
@@ -163,14 +163,14 @@ async function loadQuestions(): Promise<QuestionsData> {
 
 function shouldShowQuestion(
   question: Question,
-  answers: Record<string, string>
+  answers: Record<string, string>,
 ): boolean {
   if (!question.showIf) return true;
   try {
     return new Function("answers", `return ${question.showIf}`)(answers);
   } catch (error) {
     console.error(
-      chalk.red(`Error evaluating showIf condition: ${question.showIf}`)
+      chalk.red(`Error evaluating showIf condition: ${question.showIf}`),
     );
     return false;
   }
@@ -232,13 +232,13 @@ const getRandomDuration = (range: [number, number]): number => {
 };
 
 const simulateProcessingSteps = async (
-  steps: ProcessingStep[]
+  steps: ProcessingStep[],
 ): Promise<void> => {
   console.log(
     createBox(
       chalk.bold("\n🎉 Questionnaire Completed 🎉 !\n\n") +
-        chalk.bold.cyan("Building Your Environment")
-    )
+        chalk.bold.cyan("Building Your Environment"),
+    ),
   );
 
   for (let i = 0; i < steps.length; i++) {
@@ -252,32 +252,32 @@ const simulateProcessingSteps = async (
 
     if (step.subSteps && step.subSteps.length > 0) {
       stepSpinner.succeed(
-        chalk.green(`[${i + 1}/${steps.length}] ${step.message}`)
+        chalk.green(`[${i + 1}/${steps.length}] ${step.message}`),
       );
 
       for (let j = 0; j < step.subSteps.length; j++) {
         const substep = step.subSteps[j];
         const subSpinner = ora({
           text: chalk.yellow(
-            `    [${j + 1}/${step.subSteps.length}] ${substep.message}...`
+            `    [${j + 1}/${step.subSteps.length}] ${substep.message}...`,
           ),
           spinner: "dots",
         }).start();
 
         await new Promise((resolve) =>
-          setTimeout(resolve, getRandomDuration(substep.duration))
+          setTimeout(resolve, getRandomDuration(substep.duration)),
         );
 
         subSpinner.succeed(
           chalk.green(
-            `    [${j + 1}/${step.subSteps.length}] ${substep.message}`
-          )
+            `    [${j + 1}/${step.subSteps.length}] ${substep.message}`,
+          ),
         );
       }
     } else {
       await new Promise((resolve) => setTimeout(resolve, duration));
       stepSpinner.succeed(
-        chalk.green(`[${i + 1}/${steps.length}] ${step.message}`)
+        chalk.green(`[${i + 1}/${steps.length}] ${step.message}`),
       );
     }
   }
@@ -288,7 +288,7 @@ const simulateProcessingSteps = async (
       margin: 1,
       borderStyle: "double",
       borderColor: "green",
-    })
+    }),
   );
 };
 
@@ -314,7 +314,7 @@ const gracefulExit = () => {
   console.log(
     boxen(
       chalk.bold.yellow(
-        "👋 Gracefully shutting down SimBot CLI...\nThank you for using our tool!"
+        "👋 Gracefully shutting down SimBot CLI...\nThank you for using our tool!",
       ),
       {
         padding: 1,
@@ -322,8 +322,8 @@ const gracefulExit = () => {
         borderStyle: "round",
         borderColor: "yellow",
         textAlignment: "center",
-      }
-    )
+      },
+    ),
   );
   process.exit(0);
 };
@@ -332,9 +332,9 @@ const requestEmailAndShare = async (): Promise<boolean> => {
   console.log(
     createBox(
       chalk.yellow(
-        "Please provide your email address to receive the chart version"
-      )
-    )
+        "Please provide your email address to receive the chart version",
+      ),
+    ),
   );
 
   const email = await input({
@@ -357,7 +357,7 @@ const requestEmailAndShare = async (): Promise<boolean> => {
   await new Promise((resolve) => setTimeout(resolve, duration));
 
   sharingSpinner.succeed(
-    chalk.green(`Chart details successfully sent to ${email}`)
+    chalk.green(`Chart details successfully sent to ${email}`),
   );
 
   const continueUsing = await confirm({
@@ -379,7 +379,7 @@ async function runQuestionnaire() {
   const initialMessage =
     chalk.bold.blue("Welcome to SIM BOT!\n") +
     chalk.yellow(
-      "This tool will guide you through setting up your environment.\n"
+      "This tool will guide you through setting up your environment.\n",
     );
 
   console.log(createBox(initialMessage));
@@ -414,10 +414,13 @@ async function runQuestionnaire() {
         if (question.type === "select") {
           if (!question.choices)
             throw new Error(
-              `Missing choices for select question: ${question.message}`
+              `Missing choices for select question: ${question.message}`,
             );
           answer = await select({
-            message: chalk.blue(question.message),
+            message:
+              chalk.bold.greenBright("SimBot :   ") +
+              chalk.blue(question.message) +
+              chalk.bold.whiteBright("\n  USER  >   "),
             choices: question.choices.map((choice) => ({
               name: choice.name,
               value: choice.value,
@@ -426,7 +429,10 @@ async function runQuestionnaire() {
           isValid = true;
         } else if (question.type === "input") {
           answer = await input({
-            message: chalk.blue(question.message),
+            message:
+              chalk.bold.greenBright("SimBot :   ") +
+              chalk.blue(question.message) +
+              chalk.bold.whiteBright("\n  USER  >   "),
           });
           isValid = true;
         } else if (question.type === "file-selector") {
@@ -434,7 +440,10 @@ async function runQuestionnaire() {
 
           while (!isFileValid) {
             const selection: any = await fileSelector({
-              message: question.message,
+              message:
+                chalk.bold.greenBright("SimBot :   ") +
+                chalk.blue(question.message) +
+                chalk.bold.whiteBright("\n  USER  >   "),
               basePath: process.cwd(),
             });
 
@@ -455,8 +464,8 @@ async function runQuestionnaire() {
                 chalk.red(
                   `Validation failed: ${
                     error instanceof Error ? error.message : "Unknown error"
-                  }`
-                )
+                  }`,
+                ),
               );
 
               const retry = await confirm({
@@ -498,8 +507,8 @@ async function runQuestionnaire() {
     initialSpinner.fail(chalk.red("Questionnaire failed"));
     console.error(
       chalk.red(
-        error instanceof Error ? error.message : "An unknown error occurred"
-      )
+        error instanceof Error ? error.message : "An unknown error occurred",
+      ),
     );
     throw error;
   }
